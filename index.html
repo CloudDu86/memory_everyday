@@ -94,9 +94,19 @@
                 body: { plus: 0, minus: 0, note: '' },
                 skill: { plus: 0, minus: 0, note: '' }
             });
+            const [showSettings, setShowSettings] = useState(false);
+            const [githubConfig, setGithubConfig] = useState({ token: '', owner: 'CloudDu86', repo: 'memory_everyday', fileSha: null });
+            const [syncStatus, setSyncStatus] = useState(''); // '', 'syncing', 'success', 'error'
 
-            // 初始化加载本地数据
+            // 初始化加载本地数据，并尝试从 GitHub 同步
             useEffect(() => {
+                const localConfig = localStorage.getItem('github_config');
+                let config = { token: '', owner: 'CloudDu86', repo: 'memory_everyday', fileSha: null };
+                if (localConfig) {
+                    try { config = { ...config, ...JSON.parse(localConfig) }; } catch (e) { }
+                    setGithubConfig(config);
+                }
+
                 const saved = localStorage.getItem('daily_logs');
                 if (saved) {
                     try {
@@ -105,7 +115,69 @@
                         console.error("Failed to parse logs", e);
                     }
                 }
+
+                if (config.token && config.owner && config.repo) {
+                    fetchFromGitHub(config);
+                }
             }, []);
+
+            const fetchFromGitHub = async (config = githubConfig) => {
+                setSyncStatus('syncing');
+                try {
+                    const res = await fetch(`https://api.github.com/repos/${config.owner}/${config.repo}/contents/data.json`, {
+                        headers: { 'Authorization': `token ${config.token}`, 'Accept': 'application/vnd.github.v3+json' }
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        const decodedContent = decodeURIComponent(escape(atob(data.content)));
+                        const fetchedLogs = JSON.parse(decodedContent);
+                        setLogs(fetchedLogs);
+                        localStorage.setItem('daily_logs', JSON.stringify(fetchedLogs));
+                        setGithubConfig(prev => ({ ...prev, fileSha: data.sha }));
+                        setSyncStatus('success');
+                        setTimeout(() => setSyncStatus(''), 3000);
+                    } else if (res.status === 404) {
+                        setSyncStatus('success');
+                        setTimeout(() => setSyncStatus(''), 3000);
+                    } else {
+                        throw new Error('API Error: ' + res.status);
+                    }
+                } catch (err) {
+                    console.error("GitHub Sync Error:", err);
+                    setSyncStatus('error');
+                    setTimeout(() => setSyncStatus(''), 3000);
+                }
+            };
+
+            const saveToGitHub = async (newLogs, config = githubConfig) => {
+                if (!config.token || !config.owner || !config.repo) return;
+                setSyncStatus('syncing');
+                try {
+                    const content = btoa(unescape(encodeURIComponent(JSON.stringify(newLogs, null, 2))));
+                    const body = { message: "Sync daily logs", content: content };
+                    if (config.fileSha) body.sha = config.fileSha;
+
+                    const res = await fetch(`https://api.github.com/repos/${config.owner}/${config.repo}/contents/data.json`, {
+                        method: 'PUT',
+                        headers: { 'Authorization': `token ${config.token}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+                    
+                    if (res.ok) {
+                        const data = await res.json();
+                        setGithubConfig(prev => ({ ...prev, fileSha: data.content.sha }));
+                        localStorage.setItem('github_config', JSON.stringify({ ...config, fileSha: data.content.sha }));
+                        setSyncStatus('success');
+                        setTimeout(() => setSyncStatus(''), 3000);
+                    } else {
+                        throw new Error('API Error: ' + res.status);
+                    }
+                } catch (err) {
+                    console.error("GitHub Save Error:", err);
+                    setSyncStatus('error');
+                    setTimeout(() => setSyncStatus(''), 3000);
+                }
+            };
 
             const calculateCatScore = (catId) => 6 + scores[catId].plus - scores[catId].minus;
 
@@ -130,6 +202,7 @@
                 const newLogs = [finalData, ...logs];
                 setLogs(newLogs);
                 localStorage.setItem('daily_logs', JSON.stringify(newLogs));
+                saveToGitHub(newLogs);
 
                 setScores({
                     heart: { plus: 0, minus: 0, note: '' },
@@ -144,6 +217,7 @@
                 const newLogs = logs.filter(l => l.id !== id);
                 setLogs(newLogs);
                 localStorage.setItem('daily_logs', JSON.stringify(newLogs));
+                saveToGitHub(newLogs);
             };
 
             const exportToCSV = () => {
@@ -185,9 +259,88 @@
                                 >
                                     <Icon name="BarChart3" size={20} />
                                 </button>
+                                <button
+                                    onClick={() => setShowSettings(true)}
+                                    className={`relative p-2 rounded-lg transition-all text-slate-400 hover:text-slate-900`}
+                                    title="设置与云同步"
+                                >
+                                    <Icon name="Settings" size={20} />
+                                    {syncStatus === 'syncing' && <span className="absolute top-1 right-1 flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span></span>}
+                                    {syncStatus === 'success' && <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-500"></span>}
+                                    {syncStatus === 'error' && <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500"></span>}
+                                </button>
                             </div>
                         </div>
                     </nav>
+
+                    {/* 设置弹窗 */}
+                    {showSettings && (
+                        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                            <div className="bg-white rounded-3xl w-full max-w-md p-8 shadow-2xl relative animate-in zoom-in-95 duration-200">
+                                <button onClick={() => setShowSettings(false)} className="absolute top-6 right-6 text-slate-400 hover:text-slate-900">
+                                    <Icon name="X" size={24} />
+                                </button>
+                                <div className="flex items-center gap-3 mb-6">
+                                    <Icon name="Github" size={28} className="text-slate-900" />
+                                    <h2 className="text-xl font-black">云端同步设置</h2>
+                                </div>
+                                <p className="text-sm text-slate-500 mb-6">将数据同步至 GitHub 仓库的 <code className="bg-slate-100 px-1 py-0.5 rounded">data.json</code>，实现多端同步且永不丢失。</p>
+                                
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 mb-1">GitHub 用户名</label>
+                                        <input 
+                                            type="text" 
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 ring-slate-900" 
+                                            placeholder="例如: CloudDu86"
+                                            value={githubConfig.owner}
+                                            onChange={e => setGithubConfig({...githubConfig, owner: e.target.value})}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 mb-1">仓库名称</label>
+                                        <input 
+                                            type="text" 
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 ring-slate-900" 
+                                            placeholder="例如: memory_everyday"
+                                            value={githubConfig.repo}
+                                            onChange={e => setGithubConfig({...githubConfig, repo: e.target.value})}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 mb-1">访问令牌 Personal Access Token <a href="https://github.com/settings/tokens/new?scopes=repo" target="_blank" className="text-blue-500 hover:underline">去申请</a></label>
+                                        <input 
+                                            type="password" 
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 ring-slate-900" 
+                                            placeholder="ghp_xxxxxxxxxxx"
+                                            value={githubConfig.token}
+                                            onChange={e => setGithubConfig({...githubConfig, token: e.target.value})}
+                                        />
+                                        <p className="text-[10px] text-slate-400 mt-1">需勾选 `repo` 权限。令牌仅保存在您当前浏览器的缓存中，非常安全。</p>
+                                    </div>
+                                    
+                                    <div className="pt-4 flex gap-3">
+                                        <button 
+                                            onClick={() => {
+                                                localStorage.setItem('github_config', JSON.stringify(githubConfig));
+                                                alert('令牌配置已保存在本地。');
+                                                if(githubConfig.token) fetchFromGitHub();
+                                                setShowSettings(false);
+                                            }}
+                                            className="flex-1 bg-slate-900 text-white font-bold py-3 rounded-xl hover:bg-black transition-colors"
+                                        >保存并同步</button>
+                                        <button 
+                                            onClick={() => {
+                                                setGithubConfig({ token: '', owner: 'CloudDu86', repo: 'memory_everyday', fileSha: null });
+                                                localStorage.removeItem('github_config');
+                                            }}
+                                            className="bg-red-50 text-red-600 font-bold px-4 py-3 rounded-xl hover:bg-red-100 transition-colors"
+                                        >清除</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     <main className="max-w-5xl mx-auto p-4 mt-6">
                         {view === 'input' ? (
