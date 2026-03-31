@@ -1,0 +1,27 @@
+[
+  {
+    "id": 1774929903384,
+    "date": "2026-03-31",
+    "scores": {
+      "heart": {
+        "score": 10,
+        "plus": 4,
+        "minus": 0,
+        "note": "你"
+      },
+      "body": {
+        "score": 10,
+        "plus": 4,
+        "minus": 0,
+        "note": "好"
+      },
+      "skill": {
+        "score": 10,
+        "plus": 4,
+        "minus": 0,
+        "note": "吗"
+      }
+    },
+    "total": 30
+  }
+]
