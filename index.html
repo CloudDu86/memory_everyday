@@ -47,8 +47,10 @@
          * 由于 LucideReact CDN 变量不稳定，我们直接从 lucide.icons 中提取 SVG 结构进行渲染
          */
         const Icon = ({ name, size = 24, className = "" }) => {
-            // 获取图标数据
-            const iconData = lucide.icons[name.toLowerCase()];
+            // 获取图标数据：忽略大小写匹配对象属性
+            const iconKey = Object.keys(lucide?.icons || {}).find(k => k.toLowerCase() === name.toLowerCase());
+            const iconData = iconKey ? lucide.icons[iconKey] : null;
+
             if (!iconData) return null;
 
             const [tag, attrs, children] = iconData;
