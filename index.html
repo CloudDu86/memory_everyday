@@ -119,6 +119,11 @@
                     }
                 }
 
+                const savedHabits = localStorage.getItem('habits_data');
+                if (savedHabits) {
+                    try { setHabits(JSON.parse(savedHabits)); } catch(e) {}
+                }
+
                 if (config.token && config.owner && config.repo) {
                     fetchFromGitHub(config);
                     fetchHabitsFromGitHub(config);
@@ -153,6 +158,7 @@
                         const decodedContent = decodeURIComponent(escape(atob(data.content)));
                         const fetchedHabits = JSON.parse(decodedContent);
                         setHabits(fetchedHabits);
+                        localStorage.setItem('habits_data', JSON.stringify(fetchedHabits));
                         setHabitsSha(data.sha);
                     }
                 } catch (err) {
@@ -251,13 +257,19 @@
                     return h;
                 });
                 setHabits(newHabits);
+                localStorage.setItem('habits_data', JSON.stringify(newHabits));
                 saveHabitsToGitHub(newHabits);
             };
 
             const updateHabitName = (id, newName) => {
                 const newHabits = habits.map(h => h.id === id ? { ...h, name: newName } : h);
                 setHabits(newHabits);
-                saveHabitsToGitHub(newHabits);
+                localStorage.setItem('habits_data', JSON.stringify(newHabits));
+            };
+
+            const commitHabitName = () => {
+                saveHabitsToGitHub(habits);
+                setEditingHabitId(null);
             };
 
             const calculateCatScore = (catId) => 6 + scores[catId].plus - scores[catId].minus;
@@ -506,8 +518,8 @@
                                                         className="bg-white/50 border-none rounded px-2 py-0.5 font-bold text-xl text-slate-800 outline-none ring-2 ring-indigo-200 w-full"
                                                         value={habit.name}
                                                         onChange={e => updateHabitName(habit.id, e.target.value)}
-                                                        onBlur={() => setEditingHabitId(null)}
-                                                        onKeyDown={e => e.key === 'Enter' && setEditingHabitId(null)}
+                                                        onBlur={commitHabitName}
+                                                        onKeyDown={e => e.key === 'Enter' && commitHabitName()}
                                                     />
                                                 ) : (
                                                     <h3 className="font-bold text-xl text-slate-800 flex items-center gap-2">
