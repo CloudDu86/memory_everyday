@@ -149,6 +149,7 @@
             }, [date, logs]);
 
             const fetchHabitsFromGitHub = async (config = githubConfig) => {
+                setSyncStatus('syncing');
                 try {
                     const res = await fetch(`https://api.github.com/repos/${config.owner}/${config.repo}/contents/habits.json`, {
                         headers: { 'Authorization': `token ${config.token}`, 'Accept': 'application/vnd.github.v3+json' }
@@ -160,9 +161,19 @@
                         setHabits(fetchedHabits);
                         localStorage.setItem('habits_data', JSON.stringify(fetchedHabits));
                         setHabitsSha(data.sha);
+                        setSyncStatus('success');
+                        setTimeout(() => setSyncStatus(''), 3000);
+                    } else if (res.status === 404) {
+                        setHabitsSha(null);
+                        setSyncStatus('success');
+                        setTimeout(() => setSyncStatus(''), 3000);
+                    } else {
+                        throw new Error('Habits API Error: ' + res.status);
                     }
                 } catch (err) {
                     console.error("Habits Sync Error:", err);
+                    setSyncStatus('error');
+                    setTimeout(() => setSyncStatus(''), 3000);
                 }
             };
 
@@ -224,12 +235,25 @@
                 }
             };
 
-            const saveHabitsToGitHub = async (newHabits, config = githubConfig) => {
+            const saveHabitsToGitHub = async (newHabits, config = githubConfig, retry = true) => {
                 if (!config.token || !config.owner || !config.repo) return;
+                setSyncStatus('syncing');
                 try {
+                    // 如果 SHA 缺失，先尝试获取一次最新的 SHA
+                    let currentSha = habitsSha;
+                    if (!currentSha) {
+                        const checkRes = await fetch(`https://api.github.com/repos/${config.owner}/${config.repo}/contents/habits.json`, {
+                            headers: { 'Authorization': `token ${config.token}`, 'Accept': 'application/vnd.github.v3+json' }
+                        });
+                        if (checkRes.ok) {
+                            const checkData = await checkRes.json();
+                            currentSha = checkData.sha;
+                        }
+                    }
+
                     const content = btoa(unescape(encodeURIComponent(JSON.stringify(newHabits, null, 2))));
                     const body = { message: "Sync habits", content: content };
-                    if (habitsSha) body.sha = habitsSha;
+                    if (currentSha) body.sha = currentSha;
 
                     const res = await fetch(`https://api.github.com/repos/${config.owner}/${config.repo}/contents/habits.json`, {
                         method: 'PUT',
@@ -240,9 +264,20 @@
                     if (res.ok) {
                         const data = await res.json();
                         setHabitsSha(data.content.sha);
+                        setSyncStatus('success');
+                        setTimeout(() => setSyncStatus(''), 3000);
+                    } else if (res.status === 409 && retry) {
+                        // 发生冲突，重试一次
+                        console.warn("Habits sync conflict, retrying...");
+                        setHabitsSha(null); // 清除 SHA 触发重新获取
+                        return saveHabitsToGitHub(newHabits, config, false);
+                    } else {
+                        throw new Error('Habits Save API Error: ' + res.status);
                     }
                 } catch (err) {
                     console.error("Habits Save Error:", err);
+                    setSyncStatus('error');
+                    setTimeout(() => setSyncStatus(''), 3000);
                 }
             };
 
