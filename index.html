@@ -125,6 +125,24 @@
                 }
             }, []);
 
+            // 当日期或日志改变时，自动回填当天已保存的数据
+            useEffect(() => {
+                const existingLog = logs.find(l => l.date === date);
+                if (existingLog) {
+                    setScores({
+                        heart: { plus: existingLog.scores.heart.plus || 0, minus: existingLog.scores.heart.minus || 0, note: existingLog.scores.heart.note || '' },
+                        body: { plus: existingLog.scores.body.plus || 0, minus: existingLog.scores.body.minus || 0, note: existingLog.scores.body.note || '' },
+                        skill: { plus: existingLog.scores.skill.plus || 0, minus: existingLog.scores.skill.minus || 0, note: existingLog.scores.skill.note || '' }
+                    });
+                } else {
+                    setScores({
+                        heart: { plus: 0, minus: 0, note: '' },
+                        body: { plus: 0, minus: 0, note: '' },
+                        skill: { plus: 0, minus: 0, note: '' }
+                    });
+                }
+            }, [date, logs]);
+
             const fetchHabitsFromGitHub = async (config = githubConfig) => {
                 try {
                     const res = await fetch(`https://api.github.com/repos/${config.owner}/${config.repo}/contents/habits.json`, {
@@ -250,7 +268,6 @@
                     [catId]: { ...prev[catId], [type]: Math.max(0, prev[catId][type] + delta) }
                 }));
             };
-
             const handleSave = () => {
                 const finalData = {
                     id: Date.now(),
@@ -262,17 +279,21 @@
                     },
                     total: calculateCatScore('heart') + calculateCatScore('body') + calculateCatScore('skill')
                 };
-                const newLogs = [finalData, ...logs];
+                
+                // 检查是否已存在该日期的记录，存在则更新，不存在则添加
+                const existingIndex = logs.findIndex(l => l.date === date);
+                let newLogs;
+                if (existingIndex >= 0) {
+                    newLogs = [...logs];
+                    newLogs[existingIndex] = { ...finalData, id: logs[existingIndex].id }; // 保持原 ID
+                } else {
+                    newLogs = [finalData, ...logs];
+                }
+
                 setLogs(newLogs);
                 localStorage.setItem('daily_logs', JSON.stringify(newLogs));
                 saveToGitHub(newLogs);
-
-                setScores({
-                    heart: { plus: 0, minus: 0, note: '' },
-                    body: { plus: 0, minus: 0, note: '' },
-                    skill: { plus: 0, minus: 0, note: '' }
-                });
-                alert('记录已保存！');
+                alert('今日记录已同步至云端！');
             };
 
             const deleteLog = (id) => {
@@ -285,13 +306,16 @@
 
             const exportToCSV = () => {
                 if (logs.length === 0) return;
-                const headers = ["日期", "总分", "心分数", "体分数", "技分数"];
+                const headers = ["日期", "总分", "心分数", "心备注", "体分数", "体备注", "技分数", "技备注"];
                 const rows = logs.map(log => [
                     log.date,
                     log.total,
                     log.scores.heart.score,
+                    `"${(log.scores.heart.note || '').replace(/"/g, '""')}"`,
                     log.scores.body.score,
-                    log.scores.skill.score
+                    `"${(log.scores.body.note || '').replace(/"/g, '""')}"`,
+                    log.scores.skill.score,
+                    `"${(log.scores.skill.note || '').replace(/"/g, '""')}"`
                 ]);
                 const csvContent = "\uFEFF" + [headers, ...rows].map(e => e.join(",")).join("\n");
                 const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
