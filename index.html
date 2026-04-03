@@ -97,6 +97,8 @@
             const [showSettings, setShowSettings] = useState(false);
             const [githubConfig, setGithubConfig] = useState({ token: '', owner: 'CloudDu86', repo: 'memory_everyday', fileSha: null });
             const [syncStatus, setSyncStatus] = useState(''); // '', 'syncing', 'success', 'error'
+            const [habits, setHabits] = useState([{ id: 1, name: '每日阅读', doneDates: [] }]);
+            const [habitsSha, setHabitsSha] = useState(null);
 
             // 初始化加载本地数据，并尝试从 GitHub 同步
             useEffect(() => {
@@ -118,8 +120,26 @@
 
                 if (config.token && config.owner && config.repo) {
                     fetchFromGitHub(config);
+                    fetchHabitsFromGitHub(config);
                 }
             }, []);
+
+            const fetchHabitsFromGitHub = async (config = githubConfig) => {
+                try {
+                    const res = await fetch(`https://api.github.com/repos/${config.owner}/${config.repo}/contents/habits.json`, {
+                        headers: { 'Authorization': `token ${config.token}`, 'Accept': 'application/vnd.github.v3+json' }
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        const decodedContent = decodeURIComponent(escape(atob(data.content)));
+                        const fetchedHabits = JSON.parse(decodedContent);
+                        setHabits(fetchedHabits);
+                        setHabitsSha(data.sha);
+                    }
+                } catch (err) {
+                    console.error("Habits Sync Error:", err);
+                }
+            };
 
             const fetchFromGitHub = async (config = githubConfig) => {
                 setSyncStatus('syncing');
@@ -177,6 +197,42 @@
                     setSyncStatus('error');
                     setTimeout(() => setSyncStatus(''), 3000);
                 }
+            };
+
+            const saveHabitsToGitHub = async (newHabits, config = githubConfig) => {
+                if (!config.token || !config.owner || !config.repo) return;
+                try {
+                    const content = btoa(unescape(encodeURIComponent(JSON.stringify(newHabits, null, 2))));
+                    const body = { message: "Sync habits", content: content };
+                    if (habitsSha) body.sha = habitsSha;
+
+                    const res = await fetch(`https://api.github.com/repos/${config.owner}/${config.repo}/contents/habits.json`, {
+                        method: 'PUT',
+                        headers: { 'Authorization': `token ${config.token}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+                    
+                    if (res.ok) {
+                        const data = await res.json();
+                        setHabitsSha(data.content.sha);
+                    }
+                } catch (err) {
+                    console.error("Habits Save Error:", err);
+                }
+            };
+
+            const toggleHabit = (id) => {
+                const newHabits = habits.map(h => {
+                    if (h.id === id) {
+                        const doneDates = h.doneDates.includes(date) 
+                            ? h.doneDates.filter(d => d !== date)
+                            : [...h.doneDates, date];
+                        return { ...h, doneDates };
+                    }
+                    return h;
+                });
+                setHabits(newHabits);
+                saveHabitsToGitHub(newHabits);
             };
 
             const calculateCatScore = (catId) => 6 + scores[catId].plus - scores[catId].minus;
@@ -360,6 +416,32 @@
                                         />
                                     </div>
                                 </div>
+
+                                {/* 习惯养成区块 */}
+                                <section className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm animate-in slide-in-from-top-4 duration-700">
+                                    <div className="flex justify-between items-center mb-6">
+                                        <h2 className="text-xl font-black flex items-center gap-2">
+                                            <Icon name="Target" className="text-indigo-500" size={24} />
+                                            正在养成的习惯
+                                        </h2>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                        {habits.map(habit => (
+                                            <div key={habit.id} className="group flex items-center justify-between p-5 bg-slate-50 rounded-2xl border border-slate-100 hover:border-indigo-100 hover:bg-indigo-50/30 transition-all">
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-slate-800">{habit.name}</span>
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">已坚持 {habit.doneDates.length} 天</span>
+                                                </div>
+                                                <button 
+                                                    onClick={() => toggleHabit(habit.id)}
+                                                    className={`px-6 py-2.5 rounded-xl font-black text-xs transition-all shadow-sm active:scale-95 ${habit.doneDates.includes(date) ? 'bg-indigo-500 text-white' : 'bg-white text-slate-400 border border-slate-200'}`}
+                                                >
+                                                    {habit.doneDates.includes(date) ? 'DONE' : 'CHECK'}
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     {CATEGORIES.map(cat => (
