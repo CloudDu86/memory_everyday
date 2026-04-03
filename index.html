@@ -464,7 +464,7 @@
             return (
                 <div className="min-h-screen pb-24 fade-in">
                     <nav className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-50 shadow-sm">
-                        <div className="max-w-5xl mx-auto flex justify-between items-center">
+                        <div className="max-w-[1280px] mx-auto flex justify-between items-center">
                             <div className="flex items-center gap-2 font-black text-xl tracking-tighter">
                                 <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white text-xs">心</div>
                                 <span>心体技仪表盘</span>
@@ -565,7 +565,7 @@
                         </div>
                     )}
 
-                    <main className="max-w-5xl mx-auto p-4 mt-6">
+                    <main className="max-w-[1400px] mx-auto px-6 mt-10">
                         {view === 'input' ? (
                             <div className="space-y-8 animate-in slide-in-from-top-2 duration-500">
                                 <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
@@ -584,9 +584,9 @@
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
                                     {CATEGORIES.map(cat => (
-                                        <div key={cat.id} className={`p-6 rounded-[2rem] border ${cat.borderColor} ${cat.color} transition-all lg:col-span-1 hover:shadow-lg group`}>
+                                        <div key={cat.id} className={`p-8 rounded-[2.5rem] border ${cat.borderColor} ${cat.color} transition-all lg:col-span-1 hover:shadow-xl group`}>
                                             <div className="flex justify-between items-start mb-6">
                                                 <div className="p-3 bg-white rounded-2xl shadow-sm group-hover:scale-110 transition-transform">
                                                     <Icon name={cat.iconName} className={cat.iconColor} size={24} />
@@ -624,7 +624,7 @@
 
                                     {/* 习惯养成卡片（平行放置） */}
                                     {habits.map(habit => (
-                                        <div key={habit.id} className="p-6 rounded-[2rem] border border-indigo-100 bg-indigo-50 transition-all lg:col-span-1 hover:shadow-lg group">
+                                        <div key={habit.id} className="p-8 rounded-[2.5rem] border border-indigo-100 bg-indigo-50 transition-all lg:col-span-1 hover:shadow-xl group">
                                             <div className="flex justify-between items-start mb-6">
                                                 <div className="p-3 bg-white rounded-2xl shadow-sm group-hover:scale-110 transition-transform text-indigo-500">
                                                     <Icon name="Target" size={24} />
@@ -683,7 +683,7 @@
                                         </div>
                                     ))}
                                     {/* 复选清单卡片 (Check List) */}
-                                    <div className="p-6 rounded-[2rem] border border-amber-200 bg-amber-100/80 transition-all lg:col-span-1 hover:shadow-lg">
+                                    <div className="p-8 rounded-[2.5rem] border border-amber-200 bg-amber-100/80 transition-all lg:col-span-1 hover:shadow-xl">
                                         <div className="flex justify-between items-start mb-6">
                                             <div className="p-3 bg-white rounded-2xl shadow-sm text-amber-600">
                                                 <Icon name="ListTodo" size={20} />
