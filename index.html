@@ -683,24 +683,24 @@
                                         </div>
                                     ))}
                                     {/* 复选清单卡片 (Check List) */}
-                                    <div className="p-8 rounded-[2rem] border border-amber-100 bg-amber-50 transition-all hover:shadow-lg lg:col-span-2">
+                                    <div className="p-6 rounded-[2rem] border border-amber-200 bg-amber-100/80 transition-all lg:col-span-1 hover:shadow-lg">
                                         <div className="flex justify-between items-start mb-6">
-                                            <div className="p-3 bg-white rounded-2xl shadow-sm text-amber-500">
-                                                <Icon name="ListTodo" size={24} />
+                                            <div className="p-3 bg-white rounded-2xl shadow-sm text-amber-600">
+                                                <Icon name="ListTodo" size={20} />
                                             </div>
-                                            <div>
-                                                <h3 className="font-bold text-xl text-slate-800 text-right">今日清单</h3>
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">To-Do Checklist</p>
+                                            <div className="text-right">
+                                                <h3 className="font-bold text-lg text-slate-800 leading-tight">今日清单</h3>
+                                                <p className="text-[9px] font-bold text-amber-700/50 uppercase tracking-widest">Checklist</p>
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        <div className="space-y-6">
                                             {['morning', 'afternoon', 'evening'].map((section) => (
-                                                <div key={section} className="space-y-3">
-                                                    <p className="text-[10px] font-black text-amber-600/50 uppercase tracking-widest px-1">
+                                                <div key={section} className="space-y-2">
+                                                    <p className="text-[10px] font-black text-amber-800/40 uppercase tracking-widest px-1">
                                                         {section === 'morning' ? '上午' : section === 'afternoon' ? '下午' : '晚上'}
                                                     </p>
-                                                    <div className="space-y-2">
+                                                    <div className="space-y-1.5 px-0.5">
                                                         {(checklists[date]?.[section] || [{t:'',d:false},{t:'',d:false},{t:'',d:false}]).map((item, idx) => (
                                                             <div key={idx} className="flex items-center gap-2 group/item">
                                                                 <button 
@@ -708,13 +708,13 @@
                                                                         updateChecklist(section, idx, 'd', !item.d);
                                                                         setTimeout(commitChecklist, 100);
                                                                     }}
-                                                                    className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${item.d ? 'bg-amber-500 text-white' : 'bg-white border-2 border-amber-100 group-hover/item:border-amber-300'}`}
+                                                                    className={`w-4 h-4 rounded-md flex items-center justify-center transition-colors flex-shrink-0 ${item.d ? 'bg-amber-600 text-white' : 'bg-white/50 border border-amber-200 group-hover/item:border-amber-400'}`}
                                                                 >
-                                                                    {item.d && <Icon name="Check" size={12} />}
+                                                                    {item.d && <Icon name="Check" size={10} />}
                                                                 </button>
                                                                 <input 
-                                                                    className={`bg-transparent border-none placeholder:text-amber-200/60 text-sm focus:outline-none w-full ${item.d ? 'line-through text-slate-400' : 'text-slate-700'}`}
-                                                                    placeholder="待办事项..."
+                                                                    className={`bg-transparent border-none placeholder:text-amber-300 text-xs focus:outline-none w-full ${item.d ? 'line-through text-amber-700/40' : 'text-amber-900 font-medium'}`}
+                                                                    placeholder="..."
                                                                     value={item.t}
                                                                     onChange={e => updateChecklist(section, idx, 't', e.target.value)}
                                                                     onBlur={commitChecklist}
