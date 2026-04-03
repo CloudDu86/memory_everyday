@@ -100,6 +100,8 @@
             const [habits, setHabits] = useState([{ id: 1, name: '每日阅读', doneDates: [] }]);
             const [habitsSha, setHabitsSha] = useState(null);
             const [editingHabitId, setEditingHabitId] = useState(null);
+            const [checklists, setChecklists] = useState({}); // { date: { morning: [], afternoon: [], evening: [] } }
+            const [checklistsSha, setChecklistsSha] = useState(null);
 
             // 初始化加载本地数据，并尝试从 GitHub 同步
             useEffect(() => {
@@ -127,8 +129,33 @@
                 if (config.token && config.owner && config.repo) {
                     fetchFromGitHub(config);
                     fetchHabitsFromGitHub(config);
+                    fetchChecklistsFromGitHub(config);
                 }
             }, []);
+
+            const fetchChecklistsFromGitHub = async (config = githubConfig) => {
+                setSyncStatus('syncing');
+                try {
+                    const res = await fetch(`https://api.github.com/repos/${config.owner}/${config.repo}/contents/checklists.json`, {
+                        headers: { 'Authorization': `token ${config.token}`, 'Accept': 'application/vnd.github.v3+json' }
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        const decodedContent = decodeURIComponent(escape(atob(data.content)));
+                        const fetchedChecklists = JSON.parse(decodedContent);
+                        setChecklists(fetchedChecklists);
+                        setChecklistsSha(data.sha);
+                        setSyncStatus('success');
+                        setTimeout(() => setSyncStatus(''), 3000);
+                    } else if (res.status === 404) {
+                        setChecklistsSha(null);
+                        setSyncStatus('success');
+                        setTimeout(() => setSyncStatus(''), 3000);
+                    }
+                } catch (err) {
+                    console.error("Checklists Sync Error:", err);
+                }
+            };
 
             // 当日期或日志改变时，自动回填当天已保存的数据
             useEffect(() => {
@@ -281,6 +308,68 @@
                 }
             };
 
+            const saveChecklistsToGitHub = async (newChecklists, config = githubConfig, retry = true) => {
+                if (!config.token || !config.owner || !config.repo) return;
+                setSyncStatus('syncing');
+                try {
+                    let currentSha = checklistsSha;
+                    if (!currentSha) {
+                        const checkRes = await fetch(`https://api.github.com/repos/${config.owner}/${config.repo}/contents/checklists.json`, {
+                            headers: { 'Authorization': `token ${config.token}`, 'Accept': 'application/vnd.github.v3+json' }
+                        });
+                        if (checkRes.ok) {
+                            const checkData = await checkRes.json();
+                            currentSha = checkData.sha;
+                        }
+                    }
+
+                    const content = btoa(unescape(encodeURIComponent(JSON.stringify(newChecklists, null, 2))));
+                    const body = { message: "Sync checklists", content: content };
+                    if (currentSha) body.sha = currentSha;
+
+                    const res = await fetch(`https://api.github.com/repos/${config.owner}/${config.repo}/contents/checklists.json`, {
+                        method: 'PUT',
+                        headers: { 'Authorization': `token ${config.token}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+                    
+                    if (res.ok) {
+                        const data = await res.json();
+                        setChecklistsSha(data.content.sha);
+                        setSyncStatus('success');
+                        setTimeout(() => setSyncStatus(''), 3000);
+                    } else if (res.status === 409 && retry) {
+                        console.warn("Checklists sync conflict, retrying...");
+                        setChecklistsSha(null);
+                        return saveChecklistsToGitHub(newChecklists, config, false);
+                    }
+                } catch (err) {
+                    console.error("Checklists Save Error:", err);
+                    setSyncStatus('error');
+                    setTimeout(() => setSyncStatus(''), 3000);
+                }
+            };
+
+            const updateChecklist = (section, index, field, value) => {
+                const currentDayList = checklists[date] || {
+                    morning: [{t:'', d:false},{t:'', d:false},{t:'', d:false}],
+                    afternoon: [{t:'', d:false},{t:'', d:false},{t:'', d:false}],
+                    evening: [{t:'', d:false},{t:'', d:false},{t:'', d:false}]
+                };
+                
+                const sectionList = [...currentDayList[section]];
+                sectionList[index] = { ...sectionList[index], [field]: value };
+                
+                const newChecklists = {
+                    ...checklists,
+                    [date]: { ...currentDayList, [section]: sectionList }
+                };
+                setChecklists(newChecklists);
+            };
+
+            const commitChecklist = () => {
+                saveChecklistsToGitHub(checklists);
+            };
             const toggleHabit = (id) => {
                 const newHabits = habits.map(h => {
                     if (h.id === id) {
@@ -495,9 +584,9 @@
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
                                     {CATEGORIES.map(cat => (
-                                        <div key={cat.id} className={`p-8 rounded-[2rem] border ${cat.borderColor} ${cat.color} transition-all hover:shadow-lg group`}>
+                                        <div key={cat.id} className={`p-6 rounded-[2rem] border ${cat.borderColor} ${cat.color} transition-all lg:col-span-1 hover:shadow-lg group`}>
                                             <div className="flex justify-between items-start mb-6">
                                                 <div className="p-3 bg-white rounded-2xl shadow-sm group-hover:scale-110 transition-transform">
                                                     <Icon name={cat.iconName} className={cat.iconColor} size={24} />
@@ -535,7 +624,7 @@
 
                                     {/* 习惯养成卡片（平行放置） */}
                                     {habits.map(habit => (
-                                        <div key={habit.id} className="p-8 rounded-[2rem] border border-indigo-100 bg-indigo-50 transition-all hover:shadow-lg group">
+                                        <div key={habit.id} className="p-6 rounded-[2rem] border border-indigo-100 bg-indigo-50 transition-all lg:col-span-1 hover:shadow-lg group">
                                             <div className="flex justify-between items-start mb-6">
                                                 <div className="p-3 bg-white rounded-2xl shadow-sm group-hover:scale-110 transition-transform text-indigo-500">
                                                     <Icon name="Target" size={24} />
@@ -593,6 +682,50 @@
                                             </div>
                                         </div>
                                     ))}
+                                    {/* 复选清单卡片 (Check List) */}
+                                    <div className="p-8 rounded-[2rem] border border-amber-100 bg-amber-50 transition-all hover:shadow-lg lg:col-span-2">
+                                        <div className="flex justify-between items-start mb-6">
+                                            <div className="p-3 bg-white rounded-2xl shadow-sm text-amber-500">
+                                                <Icon name="ListTodo" size={24} />
+                                            </div>
+                                            <div>
+                                                <h3 className="font-bold text-xl text-slate-800 text-right">今日清单</h3>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">To-Do Checklist</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            {['morning', 'afternoon', 'evening'].map((section) => (
+                                                <div key={section} className="space-y-3">
+                                                    <p className="text-[10px] font-black text-amber-600/50 uppercase tracking-widest px-1">
+                                                        {section === 'morning' ? '上午' : section === 'afternoon' ? '下午' : '晚上'}
+                                                    </p>
+                                                    <div className="space-y-2">
+                                                        {(checklists[date]?.[section] || [{t:'',d:false},{t:'',d:false},{t:'',d:false}]).map((item, idx) => (
+                                                            <div key={idx} className="flex items-center gap-2 group/item">
+                                                                <button 
+                                                                    onClick={() => {
+                                                                        updateChecklist(section, idx, 'd', !item.d);
+                                                                        setTimeout(commitChecklist, 100);
+                                                                    }}
+                                                                    className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${item.d ? 'bg-amber-500 text-white' : 'bg-white border-2 border-amber-100 group-hover/item:border-amber-300'}`}
+                                                                >
+                                                                    {item.d && <Icon name="Check" size={12} />}
+                                                                </button>
+                                                                <input 
+                                                                    className={`bg-transparent border-none placeholder:text-amber-200/60 text-sm focus:outline-none w-full ${item.d ? 'line-through text-slate-400' : 'text-slate-700'}`}
+                                                                    placeholder="待办事项..."
+                                                                    value={item.t}
+                                                                    onChange={e => updateChecklist(section, idx, 't', e.target.value)}
+                                                                    onBlur={commitChecklist}
+                                                                />
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
                                 </div>
                                 <button
                                     onClick={handleSave}
