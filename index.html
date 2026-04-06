@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>心体技·个人成长仪表盘</title>
+    <title>游戏三昧：平静的心在体验每一天</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React & Babel -->
@@ -457,7 +457,7 @@
                 const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
                 const link = document.createElement("a");
                 link.href = URL.createObjectURL(blob);
-                link.download = `心体技分析_${new Date().toLocaleDateString()}.csv`;
+                link.download = `游戏三昧分析_${new Date().toLocaleDateString()}.csv`;
                 link.click();
             };
 
@@ -466,8 +466,8 @@
                     <nav className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-50 shadow-sm">
                         <div className="max-w-[1280px] mx-auto flex justify-between items-center">
                             <div className="flex items-center gap-2 font-black text-xl tracking-tighter">
-                                <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white text-xs">心</div>
-                                <span>心体技仪表盘</span>
+                                <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white text-xs">游</div>
+                                <span>游戏三昧：平静的心在体验每一天</span>
                             </div>
                             <div className="flex gap-2 bg-slate-100 p-1 rounded-xl">
                                 <button
