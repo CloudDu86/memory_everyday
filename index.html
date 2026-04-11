@@ -97,9 +97,14 @@
             const [showSettings, setShowSettings] = useState(false);
             const [githubConfig, setGithubConfig] = useState({ token: '', owner: 'CloudDu86', repo: 'memory_everyday', fileSha: null });
             const [syncStatus, setSyncStatus] = useState(''); // '', 'syncing', 'success', 'error'
-            const [habits, setHabits] = useState([{ id: 1, name: '每日阅读', doneDates: [] }]);
+            const [habits, setHabits] = useState([
+                { id: 1, name: '11点15分准备睡', doneDates: [] },
+                { id: 2, name: '每日阅读', doneDates: [] },
+                { id: 3, name: '每日冥想', doneDates: [] }
+            ]);
             const [habitsSha, setHabitsSha] = useState(null);
             const [editingHabitId, setEditingHabitId] = useState(null);
+            const [showHabitsModal, setShowHabitsModal] = useState(false);
             const [checklists, setChecklists] = useState({}); // { date: { morning: [], afternoon: [], evening: [] } }
             const [checklistsSha, setChecklistsSha] = useState(null);
 
@@ -123,7 +128,15 @@
 
                 const savedHabits = localStorage.getItem('habits_data');
                 if (savedHabits) {
-                    try { setHabits(JSON.parse(savedHabits)); } catch(e) {}
+                    try { 
+                        const parsed = JSON.parse(savedHabits);
+                        // 确保至少有 3 个槽位
+                        const completeHabits = [...parsed];
+                        while(completeHabits.length < 3) {
+                            completeHabits.push({ id: Date.now() + completeHabits.length, name: `新习惯 ${completeHabits.length + 1}`, doneDates: [] });
+                        }
+                        setHabits(completeHabits.slice(0, 3)); 
+                    } catch(e) {}
                 }
 
                 if (config.token && config.owner && config.repo) {
@@ -185,8 +198,14 @@
                         const data = await res.json();
                         const decodedContent = decodeURIComponent(escape(atob(data.content)));
                         const fetchedHabits = JSON.parse(decodedContent);
-                        setHabits(fetchedHabits);
-                        localStorage.setItem('habits_data', JSON.stringify(fetchedHabits));
+                        // 确保至少有 3 个
+                        const completeHabits = [...fetchedHabits];
+                        while(completeHabits.length < 3) {
+                            completeHabits.push({ id: Date.now() + completeHabits.length, name: `新习惯 ${completeHabits.length + 1}`, doneDates: [] });
+                        }
+                        const finalHabits = completeHabits.slice(0, 3);
+                        setHabits(finalHabits);
+                        localStorage.setItem('habits_data', JSON.stringify(finalHabits));
                         setHabitsSha(data.sha);
                         setSyncStatus('success');
                         setTimeout(() => setSyncStatus(''), 3000);
@@ -623,65 +642,125 @@
                                     ))}
 
                                     {/* 习惯养成卡片（平行放置） */}
-                                    {habits.map(habit => (
-                                        <div key={habit.id} className="p-8 rounded-[2.5rem] border border-indigo-100 bg-indigo-50 transition-all lg:col-span-1 hover:shadow-xl group">
-                                            <div className="flex justify-between items-start mb-6">
-                                                <div className="p-3 bg-white rounded-2xl shadow-sm group-hover:scale-110 transition-transform text-indigo-500">
-                                                    <Icon name="Target" size={24} />
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">已坚持</p>
-                                                    <span className="text-4xl font-black text-slate-800">{habit.doneDates.length} <span className="text-sm">天</span></span>
-                                                </div>
+                                    {/* 习惯养成区域 (点击弹出 3 个习惯) */}
+                                    <div 
+                                        onClick={() => setShowHabitsModal(true)}
+                                        className="p-8 rounded-[2.5rem] border border-indigo-100 bg-indigo-50 transition-all lg:col-span-1 hover:shadow-xl group cursor-pointer"
+                                    >
+                                        <div className="flex justify-between items-start mb-6">
+                                            <div className="p-3 bg-white rounded-2xl shadow-sm group-hover:scale-110 transition-transform text-indigo-500">
+                                                <Icon name="Target" size={24} />
                                             </div>
-
-                                            <div className="flex items-center gap-2 mb-1 group/title">
-                                                {editingHabitId === habit.id ? (
-                                                    <input 
-                                                        autoFocus
-                                                        className="bg-white/50 border-none rounded px-2 py-0.5 font-bold text-xl text-slate-800 outline-none ring-2 ring-indigo-200 w-full"
-                                                        value={habit.name}
-                                                        onChange={e => updateHabitName(habit.id, e.target.value)}
-                                                        onBlur={commitHabitName}
-                                                        onKeyDown={e => e.key === 'Enter' && commitHabitName()}
-                                                    />
-                                                ) : (
-                                                    <h3 className="font-bold text-xl text-slate-800 flex items-center gap-2">
-                                                        {habit.name}
-                                                        <button 
-                                                            onClick={() => setEditingHabitId(habit.id)}
-                                                            className="opacity-0 group-hover/title:opacity-100 transition-opacity text-slate-400 hover:text-indigo-500"
-                                                        >
-                                                            <Icon name="Pencil" size={14} />
-                                                        </button>
-                                                    </h3>
-                                                )}
+                                            <div className="text-right">
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">习惯跟踪</p>
+                                                <span className="text-4xl font-black text-slate-800">
+                                                    {habits.filter(h => h.doneDates.includes(date)).length} 
+                                                    <span className="text-sm text-slate-400">/3</span>
+                                                </span>
                                             </div>
-                                            <p className="text-xs text-slate-500 mb-6 tracking-tight">养成一个长期稳定的好习惯</p>
+                                        </div>
 
-                                            <button 
-                                                onClick={() => toggleHabit(habit.id)}
-                                                className={`w-full py-4 rounded-2xl font-black text-lg transition-all shadow-sm active:scale-95 ${habit.doneDates.includes(date) ? 'bg-indigo-500 text-white shadow-indigo-200' : 'bg-white text-slate-600 border border-slate-200 hover:border-indigo-300'}`}
-                                            >
-                                                {habit.doneDates.includes(date) ? '今日已打卡' : '今日打卡'}
-                                            </button>
-                                            
-                                            <div className="mt-4 pt-4 border-t border-indigo-100/50">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">21 天打卡挑战</p>
-                                                <div className="grid grid-cols-7 gap-1.5">
-                                                    {[...Array(21)].map((_, i) => {
-                                                        const d = new Date();
-                                                        d.setDate(d.getDate() - (20 - i));
-                                                        const dateStr = d.toISOString().split('T')[0];
-                                                        const isDone = habit.doneDates.includes(dateStr);
-                                                        return (
-                                                            <div key={i} className={`aspect-square rounded-sm ${isDone ? 'bg-indigo-500 shadow-sm shadow-indigo-200' : 'bg-white border border-slate-100'}`} title={dateStr}></div>
-                                                        );
-                                                    })}
+                                        <h3 className="font-bold text-xl text-slate-800 mb-1">今日习惯养成</h3>
+                                        <p className="text-xs text-slate-500 mb-6 tracking-tight">养成长期稳定的好习惯</p>
+
+                                        <div className="space-y-3">
+                                            {habits.map(habit => (
+                                                <div key={habit.id} className="flex items-center justify-between bg-white/50 p-3 rounded-xl ring-1 ring-inset ring-black/5">
+                                                    <span className="text-xs font-bold text-slate-600 truncate mr-2">{habit.name}</span>
+                                                    {habit.doneDates.includes(date) ? (
+                                                        <div className="text-indigo-500"><Icon name="CheckCircle2" size={16} /></div>
+                                                    ) : (
+                                                        <div className="text-slate-300"><Icon name="Circle" size={16} /></div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                        
+                                        <div className="mt-6 text-center">
+                                            <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest group-hover:text-indigo-600 transition-colors">点击查看详情 & 记录</span>
+                                        </div>
+                                    </div>
+
+                                    {/* 习惯详情弹窗 */}
+                                    {showHabitsModal && (
+                                        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[110] flex items-center justify-center p-4">
+                                            <div className="bg-white rounded-[2.5rem] w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl relative flex flex-col animate-in zoom-in-95 duration-200">
+                                                <nav className="p-6 border-b flex justify-between items-center sticky top-0 bg-white z-10">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2 bg-indigo-50 rounded-xl text-indigo-500">
+                                                            <Icon name="Target" size={24} />
+                                                        </div>
+                                                        <h2 className="text-xl font-black italic tracking-tight">习惯养成中心</h2>
+                                                    </div>
+                                                    <button onClick={() => setShowHabitsModal(false)} className="text-slate-400 hover:text-slate-900 transition-colors">
+                                                        <Icon name="X" size={24} />
+                                                    </button>
+                                                </nav>
+
+                                                <div className="flex-1 overflow-y-auto p-8 space-y-8">
+                                                    {habits.map(habit => (
+                                                        <div key={habit.id} className="p-6 rounded-3xl bg-slate-50 border border-slate-100 group/habit">
+                                                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                                                                <div className="flex-1 w-full">
+                                                                    <div className="flex items-center gap-2 mb-1">
+                                                                        <input 
+                                                                            className="bg-transparent border-none font-black text-2xl text-slate-800 outline-none w-full focus:ring-2 ring-indigo-200 rounded px-1 -ml-1 transition-all"
+                                                                            value={habit.name}
+                                                                            onChange={e => updateHabitName(habit.id, e.target.value)}
+                                                                            onBlur={commitHabitName}
+                                                                        />
+                                                                    </div>
+                                                                    <div className="flex items-center gap-4 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                                                        <span className="flex items-center gap-1"><Icon name="Flame" size={12} className="text-orange-500" /> 已坚持 {habit.doneDates.length} 天</span>
+                                                                        {habit.doneDates.includes(date) && <span className="text-indigo-500 flex items-center gap-1"><Icon name="Sparkles" size={12} /> 今日已达成</span>}
+                                                                    </div>
+                                                                </div>
+                                                                <button 
+                                                                    onClick={() => toggleHabit(habit.id)}
+                                                                    className={`px-8 py-3 rounded-2xl font-black text-sm transition-all shadow-sm active:scale-95 whitespace-nowrap ${habit.doneDates.includes(date) ? 'bg-indigo-500 text-white shadow-indigo-100' : 'bg-white text-slate-600 border border-slate-200 hover:border-indigo-300'}`}
+                                                                >
+                                                                    {habit.doneDates.includes(date) ? '已打卡' : '今日打卡'}
+                                                                </button>
+                                                            </div>
+
+                                                            <div>
+                                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                                                    <Icon name="CalendarDays" size={12} /> 21 天进度追踪
+                                                                </p>
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    {[...Array(21)].map((_, i) => {
+                                                                        const d = new Date();
+                                                                        d.setDate(d.getDate() - (20 - i));
+                                                                        const dateStr = d.toISOString().split('T')[0];
+                                                                        const isDone = habit.doneDates.includes(dateStr);
+                                                                        const isToday = dateStr === date;
+                                                                        return (
+                                                                            <div 
+                                                                                key={i} 
+                                                                                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isDone ? 'bg-indigo-500 shadow-sm shadow-indigo-100' : 'bg-white border border-slate-200'} ${isToday ? 'ring-2 ring-indigo-300 ring-offset-2' : ''}`} 
+                                                                                title={dateStr}
+                                                                            >
+                                                                                {isDone && <Icon name="Check" size={12} className="text-white" />}
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                
+                                                <div className="p-6 bg-slate-50 border-t flex justify-center">
+                                                    <button 
+                                                        onClick={() => setShowHabitsModal(false)}
+                                                        className="bg-slate-900 text-white font-black px-12 py-3 rounded-2xl hover:bg-black transition-all"
+                                                    >
+                                                        完成并保存
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
-                                    ))}
+                                    )}
                                     {/* 复选清单卡片 (Check List) */}
                                     <div className="p-8 rounded-[2.5rem] border border-amber-200 bg-amber-100/80 transition-all lg:col-span-1 hover:shadow-xl">
                                         <div className="flex justify-between items-start mb-6">
