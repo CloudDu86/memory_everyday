@@ -497,12 +497,16 @@
                 setLunchLoading(true);
                 try {
                     const sheetId = '1U7Itf4-XiiQ_gyyAsNRmNmmnQSnUVHbJOWQbv5y5RhM';
-                    const res = await fetch(`https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`);
-                    if (!res.ok) throw new Error('fetch error');
+                    const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`;
+                    const res = await fetch(url);
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
                     const text = await res.text();
-                    const items = text.split('\n').map(l => l.replace(/"/g,'').trim()).filter(Boolean);
+                    const items = text.split('\n')
+                        .map(l => l.replace(/^"|"$/g, '').trim())
+                        .filter(l => l.length > 0 && l !== 'Column1');
                     setLunchItems(items.length > 0 ? items : ['便当', '拉面', '炒饭', '沙拉', '三明治', '寿司', '汉堡', '饺子']);
                 } catch (e) {
+                    console.error('午餐菜单加载失败:', e);
                     setLunchItems(['便当', '拉面', '炒饭', '沙拉', '三明治', '寿司', '汉堡', '饺子']);
                 }
                 setLunchLoading(false);
