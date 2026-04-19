@@ -497,17 +497,33 @@
                 setLunchLoading(true);
                 try {
                     const sheetId = '1U7Itf4-XiiQ_gyyAsNRmNmmnQSnUVHbJOWQbv5y5RhM';
+                    // 使用 export?format=csv 可能更稳定，但 gviz/tq 也不错
                     const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`;
                     const res = await fetch(url);
                     if (!res.ok) throw new Error('HTTP ' + res.status);
                     const text = await res.text();
-                    const items = text.split('\n')
-                        .map(l => l.replace(/^"|"$/g, '').trim())
-                        .filter(l => l.length > 0 && l !== 'Column1');
-                    setLunchItems(items.length > 0 ? items : ['便当', '拉面', '炒饭', '沙拉', '三明治', '寿司', '汉堡', '饺子']);
+                    
+                    // 更健壮的 CSV 行解析：处理 \r\n，提取第一列，去除引号
+                    const items = text.split(/\r?\n/)
+                        .map(line => {
+                            // 匹配第一个单元格的内容（处理被引号包裹的情况）
+                            const cells = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                            const firstCell = cells[0] || '';
+                            return firstCell.replace(/^"|"$/g, '').trim();
+                        })
+                        .filter(l => l.length > 0 && 
+                                     !['Column1', '菜单', 'Lunch', '名称', '项目', 'Name', 'Item'].includes(l));
+                    
+                    if (items.length > 0) {
+                        setLunchItems(items);
+                    } else {
+                        // 如果解析后为空，则使用兜底菜单
+                        setLunchItems(['便当', '拉面', '炒饭', '沙拉', '三明治', '寿司', '汉堡', '饺子']);
+                    }
                 } catch (e) {
                     console.error('午餐菜单加载失败:', e);
-                    setLunchItems(['便当', '拉面', '炒饭', '沙拉', '三明治', '寿司', '汉堡', '饺子']);
+                    // 只有在 lunchItems 为空时才设置兜底，避免覆盖已有的成功加载
+                    setLunchItems(prev => prev.length > 0 ? prev : ['便当', '拉面', '炒饭', '沙拉', '三明治', '寿司', '汉堡', '饺子']);
                 }
                 setLunchLoading(false);
             };
@@ -749,7 +765,7 @@
                                             />
                                             {cat.id === 'body' && (
                                                 <button
-                                                    onClick={() => { setShowLunchModal(true); if (lunchItems.length === 0) fetchLunchItems(); }}
+                                                    onClick={() => { setShowLunchModal(true); fetchLunchItems(); }}
                                                     className="mt-3 w-full text-xs font-bold text-emerald-600 bg-white/70 hover:bg-white py-2.5 rounded-2xl transition-all flex items-center justify-center gap-1.5 ring-1 ring-inset ring-emerald-200 hover:shadow-sm"
                                                 >
                                                     <Icon name="Utensils" size={14} />
