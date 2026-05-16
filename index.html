@@ -114,6 +114,19 @@
             const [isSpinning, setIsSpinning] = useState(false);
             const wheelCanvasRef = React.useRef(null);
             const currentAngleRef = React.useRef(0);
+            
+            const [taskMatrix, setTaskMatrix] = useState({
+                iu: '',
+                inu: '○ 母の状態\n○ 健康APP开发\n○ 帮助中老年人的短视频 扁导体发炎治疗',
+                niu: '',
+                ninu: ''
+            });
+
+            const updateTaskMatrix = (key, value) => {
+                const newMatrix = { ...taskMatrix, [key]: value };
+                setTaskMatrix(newMatrix);
+                localStorage.setItem('task_matrix', JSON.stringify(newMatrix));
+            };
 
             // 初始化加载本地数据，并尝试从 GitHub 同步
             useEffect(() => {
@@ -122,6 +135,11 @@
                 if (localConfig) {
                     try { config = { ...config, ...JSON.parse(localConfig) }; } catch (e) { }
                     setGithubConfig(config);
+                }
+
+                const savedMatrix = localStorage.getItem('task_matrix');
+                if (savedMatrix) {
+                    try { setTaskMatrix(JSON.parse(savedMatrix)); } catch(e) {}
                 }
 
                 const saved = localStorage.getItem('daily_logs');
@@ -729,51 +747,44 @@
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
-                                    {CATEGORIES.map(cat => (
-                                        <div key={cat.id} className={`p-8 rounded-[2.5rem] border ${cat.borderColor} ${cat.color} transition-all lg:col-span-1 hover:shadow-xl group`}>
-                                            <div className="flex justify-between items-start mb-6">
-                                                <div className="p-3 bg-white rounded-2xl shadow-sm group-hover:scale-110 transition-transform">
-                                                    <Icon name={cat.iconName} className={cat.iconColor} size={24} />
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="text-[10px] font-bold text-slate-400 uppercase">当前得分</p>
-                                                    <span className="text-4xl font-black text-slate-800">{calculateCatScore(cat.id)}</span>
-                                                </div>
+                                    <div className="p-8 rounded-[2.5rem] border border-blue-100 bg-blue-50/50 transition-all lg:col-span-3 hover:shadow-xl group flex flex-col">
+                                        <div className="flex justify-between items-start mb-6">
+                                            <div className="p-3 bg-white rounded-2xl shadow-sm">
+                                                <Icon name="LayoutGrid" className="text-blue-500" size={24} />
                                             </div>
-
-                                            <h3 className="font-bold text-xl mb-1 text-slate-800">{cat.name}</h3>
-                                            <p className="text-xs text-slate-500 mb-6">{cat.sub}</p>
-
-                                            <div className="flex gap-3 mb-6">
-                                                <div className="flex-1 bg-white/70 p-3 rounded-2xl flex justify-between items-center ring-1 ring-inset ring-black/5">
-                                                    <button className="hover:text-red-500 transition-colors" onClick={() => updateScore(cat.id, 'plus', -1)}><Icon name="Minus" size={16} /></button>
-                                                    <span className="font-black text-lg">{scores[cat.id].plus}</span>
-                                                    <button className="hover:text-emerald-500 transition-colors" onClick={() => updateScore(cat.id, 'plus', 1)}><Icon name="Plus" size={16} /></button>
-                                                </div>
-                                                <div className="flex-1 bg-white/70 p-3 rounded-2xl flex justify-between items-center text-red-500 ring-1 ring-inset ring-red-500/10">
-                                                    <button className="hover:text-slate-400 transition-colors" onClick={() => updateScore(cat.id, 'minus', -1)}><Icon name="Minus" size={16} /></button>
-                                                    <span className="font-black text-lg">{scores[cat.id].minus}</span>
-                                                    <button className="hover:text-red-700 transition-colors" onClick={() => updateScore(cat.id, 'minus', 1)}><Icon name="Plus" size={16} /></button>
-                                                </div>
+                                            <div className="text-right">
+                                                <h3 className="font-bold text-xl mb-1 text-slate-800">Task Matrix</h3>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">任务矩阵</p>
                                             </div>
-
-                                            <textarea
-                                                className="w-full p-4 text-sm rounded-2xl h-24 bg-white/50 border-none outline-none focus:bg-white focus:ring-2 ring-slate-200 transition-all resize-none"
-                                                placeholder="发生了什么？..."
-                                                value={scores[cat.id].note}
-                                                onChange={e => setScores({ ...scores, [cat.id]: { ...scores[cat.id], note: e.target.value } })}
-                                            />
-                                            {cat.id === 'body' && (
-                                                <button
-                                                    onClick={() => { setShowLunchModal(true); fetchLunchItems(); }}
-                                                    className="mt-3 w-full text-xs font-bold text-emerald-600 bg-white/70 hover:bg-white py-2.5 rounded-2xl transition-all flex items-center justify-center gap-1.5 ring-1 ring-inset ring-emerald-200 hover:shadow-sm"
-                                                >
-                                                    <Icon name="Utensils" size={14} />
-                                                    今日午餐吃什么？
-                                                </button>
-                                            )}
                                         </div>
-                                    ))}
+                                        
+                                        <div className="grid grid-cols-2 gap-px bg-blue-200 rounded-2xl overflow-hidden flex-1 border border-blue-200 min-h-[200px]">
+                                            <div className="bg-white p-4 flex flex-col">
+                                                <div className="text-[10px] font-bold text-red-500 mb-2 flex items-center gap-1"><Icon name="AlertCircle" size={12}/> 重要且紧急</div>
+                                                <textarea className="w-full flex-1 text-sm outline-none resize-none bg-transparent" placeholder="..." value={taskMatrix.iu} onChange={e => updateTaskMatrix('iu', e.target.value)}></textarea>
+                                            </div>
+                                            <div className="bg-white p-4 flex flex-col">
+                                                <div className="text-[10px] font-bold text-orange-500 mb-2 flex items-center gap-1"><Icon name="Star" size={12}/> 重要不紧急</div>
+                                                <textarea className="w-full flex-1 text-sm outline-none resize-none bg-transparent" placeholder="..." value={taskMatrix.inu} onChange={e => updateTaskMatrix('inu', e.target.value)}></textarea>
+                                            </div>
+                                            <div className="bg-white p-4 flex flex-col">
+                                                <div className="text-[10px] font-bold text-yellow-500 mb-2 flex items-center gap-1"><Icon name="Clock" size={12}/> 紧急不重要</div>
+                                                <textarea className="w-full flex-1 text-sm outline-none resize-none bg-transparent" placeholder="..." value={taskMatrix.niu} onChange={e => updateTaskMatrix('niu', e.target.value)}></textarea>
+                                            </div>
+                                            <div className="bg-white p-4 flex flex-col">
+                                                <div className="text-[10px] font-bold text-slate-400 mb-2 flex items-center gap-1"><Icon name="CupSoda" size={12}/> 不重要不紧急</div>
+                                                <textarea className="w-full flex-1 text-sm outline-none resize-none bg-transparent" placeholder="..." value={taskMatrix.ninu} onChange={e => updateTaskMatrix('ninu', e.target.value)}></textarea>
+                                            </div>
+                                        </div>
+                                        
+                                        <button
+                                            onClick={() => { setShowLunchModal(true); fetchLunchItems(); }}
+                                            className="mt-6 w-full text-sm font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 py-3 rounded-2xl transition-all flex items-center justify-center gap-2 ring-1 ring-inset ring-emerald-200 hover:shadow-sm"
+                                        >
+                                            <Icon name="Utensils" size={18} />
+                                            今日午餐需要吃什么？
+                                        </button>
+                                    </div>
 
                                     {/* 习惯养成卡片（平行放置） */}
                                     {/* 习惯养成区域 (点击弹出 3 个习惯) */}
