@@ -165,6 +165,11 @@
                     } catch(e) {}
                 }
 
+                const savedChecklists = localStorage.getItem('checklists_data');
+                if (savedChecklists) {
+                    try { setChecklists(JSON.parse(savedChecklists)); } catch(e) {}
+                }
+
                 if (config.token && config.owner && config.repo) {
                     fetchFromGitHub(config);
                     fetchHabitsFromGitHub(config);
@@ -184,6 +189,7 @@
                         const decodedContent = decodeURIComponent(escape(atob(data.content)));
                         const fetchedChecklists = JSON.parse(decodedContent);
                         setChecklists(fetchedChecklists);
+                        localStorage.setItem('checklists_data', JSON.stringify(fetchedChecklists));
                         setChecklistsSha(data.sha);
                         setSyncStatus('success');
                         setTimeout(() => setSyncStatus(''), 3000);
@@ -442,6 +448,7 @@
                     [date]: { ...currentDayList, [section]: sectionList }
                 };
                 setChecklists(newChecklists);
+                localStorage.setItem('checklists_data', JSON.stringify(newChecklists));
                 if (field === 'd') {
                     saveChecklistsToGitHub(newChecklists);
                 }
