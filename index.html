@@ -948,6 +948,133 @@
                                         </div>
                                     </div>
                                 </div>
+{/* 习惯详情弹窗 */}
+                                    {showHabitsModal && (
+                                        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[110] flex items-center justify-center p-4">
+                                            <div className="bg-white rounded-[2.5rem] w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl relative flex flex-col animate-in zoom-in-95 duration-200">
+                                                <nav className="p-6 border-b flex justify-between items-center sticky top-0 bg-white z-10">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2 bg-indigo-50 rounded-xl text-indigo-500">
+                                                            <Icon name="Target" size={24} />
+                                                        </div>
+                                                        <h2 className="text-xl font-black italic tracking-tight">习惯养成中心</h2>
+                                                    </div>
+                                                    <button onClick={() => setShowHabitsModal(false)} className="text-slate-400 hover:text-slate-900 transition-colors">
+                                                        <Icon name="X" size={24} />
+                                                    </button>
+                                                </nav>
+
+                                                <div className="flex-1 overflow-y-auto p-8 space-y-8">
+                                                    {habits.map(habit => (
+                                                        <div key={habit.id} className="p-6 rounded-3xl bg-slate-50 border border-slate-100 group/habit">
+                                                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                                                                <div className="flex-1 w-full">
+                                                                    <div className="flex items-center gap-2 mb-1">
+                                                                        <input 
+                                                                            className="bg-transparent border-none font-black text-2xl text-slate-800 outline-none w-full focus:ring-2 ring-indigo-200 rounded px-1 -ml-1 transition-all"
+                                                                            value={habit.name}
+                                                                            onChange={e => updateHabitName(habit.id, e.target.value)}
+                                                                            onBlur={commitHabitName}
+                                                                        />
+                                                                    </div>
+                                                                    <div className="flex items-center gap-4 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                                                        <span className="flex items-center gap-1"><Icon name="Flame" size={12} className="text-orange-500" /> 已坚持 {habit.doneDates.length} 天</span>
+                                                                        {habit.doneDates.includes(date) && <span className="text-indigo-500 flex items-center gap-1"><Icon name="Sparkles" size={12} /> 今日已达成</span>}
+                                                                    </div>
+                                                                </div>
+                                                                <button 
+                                                                    onClick={() => toggleHabit(habit.id)}
+                                                                    className={`px-8 py-3 rounded-2xl font-black text-sm transition-all shadow-sm active:scale-95 whitespace-nowrap ${habit.doneDates.includes(date) ? 'bg-indigo-500 text-white shadow-indigo-100' : 'bg-white text-slate-600 border border-slate-200 hover:border-indigo-300'}`}
+                                                                >
+                                                                    {habit.doneDates.includes(date) ? '已打卡' : '今日打卡'}
+                                                                </button>
+                                                            </div>
+
+                                                            <div>
+                                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                                                    <Icon name="CalendarDays" size={12} /> 21 天进度追踪
+                                                                </p>
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    {[...Array(21)].map((_, i) => {
+                                                                        const d = new Date();
+                                                                        d.setDate(d.getDate() - (20 - i));
+                                                                        const dateStr = d.toISOString().split('T')[0];
+                                                                        const isDone = habit.doneDates.includes(dateStr);
+                                                                        const isToday = dateStr === date;
+                                                                        return (
+                                                                            <div 
+                                                                                key={i} 
+                                                                                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isDone ? 'bg-indigo-500 shadow-sm shadow-indigo-100' : 'bg-white border border-slate-200'} ${isToday ? 'ring-2 ring-indigo-300 ring-offset-2' : ''}`} 
+                                                                                title={dateStr}
+                                                                            >
+                                                                                {isDone && <Icon name="Check" size={12} className="text-white" />}
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                
+                                                <div className="p-6 bg-slate-50 border-t flex justify-center">
+                                                    <button 
+                                                        onClick={() => setShowHabitsModal(false)}
+                                                        className="bg-slate-900 text-white font-black px-12 py-3 rounded-2xl hover:bg-black transition-all"
+                                                    >
+                                                        完成并保存
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {/* 午餐转盘弹窗 */}
+                                    {showLunchModal && (
+                                        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[120] flex items-center justify-center p-4">
+                                            <div className="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl relative animate-in zoom-in-95 duration-200">
+                                                <nav className="p-6 border-b flex justify-between items-center">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2 bg-emerald-50 rounded-xl text-emerald-500">
+                                                            <Icon name="Utensils" size={22} />
+                                                        </div>
+                                                        <h2 className="text-xl font-black">今日午餐转盘</h2>
+                                                    </div>
+                                                    <button onClick={() => { setShowLunchModal(false); setSpinResult(null); }} className="text-slate-400 hover:text-slate-900">
+                                                        <Icon name="X" size={24} />
+                                                    </button>
+                                                </nav>
+                                                <div className="p-8 flex flex-col items-center gap-6">
+                                                    {lunchLoading ? (
+                                                        <div className="flex items-center gap-2 text-slate-400 py-16">
+                                                            <div className="animate-spin w-5 h-5 border-2 border-slate-300 border-t-emerald-500 rounded-full"></div>
+                                                            <span className="text-sm font-bold">正在加载菜单...</span>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <div className="relative inline-block">
+                                                                <canvas ref={wheelCanvasRef} width={320} height={320} className="block rounded-full shadow-xl" />
+                                                                <div className="absolute top-1/2 -right-5 -translate-y-1/2" style={{width:0,height:0,borderTop:'14px solid transparent',borderBottom:'14px solid transparent',borderRight:'22px solid #0f172a'}} />
+                                                            </div>
+                                                            {spinResult && (
+                                                                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl px-6 py-4 text-center w-full">
+                                                                    <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">今日推荐</p>
+                                                                    <p className="text-2xl font-black text-slate-800">{spinResult}</p>
+                                                                </div>
+                                                            )}
+                                                            <button
+                                                                onClick={spinWheel}
+                                                                disabled={isSpinning}
+                                                                className={`w-full py-4 rounded-2xl font-black text-lg transition-all ${isSpinning ? 'bg-slate-100 text-slate-300 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-black active:scale-95 shadow-lg shadow-slate-200'}`}
+                                                            >
+                                                                {isSpinning ? '转动中...' : spinResult ? '再转一次！' : '开始转动'}
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    
                                 <button
                                     onClick={handleSave}
                                     className="w-full py-5 bg-slate-900 text-white rounded-[2rem] font-black text-lg shadow-2xl shadow-slate-200 hover:bg-black hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
