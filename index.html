@@ -11,6 +11,15 @@
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Babel 8 的 preset-react 默认改用 automatic JSX 运行时，会生成
+         import { jsx } from "react/jsx-runtime"，在没有打包器的 <script type="text/babel">
+         里无法解析，导致整页空白。这里注册一个使用 classic 运行时（React.createElement）的
+         自定义 preset，供下面的 text/babel 脚本通过 data-presets="react-classic" 使用。 -->
+    <script>
+        Babel.registerPreset('react-classic', {
+            presets: [[Babel.availablePresets['react'], { runtime: 'classic' }]]
+        });
+    </script>
     <!-- 使用 lucide 核心库替代 lucide-react 以获得更好的 CDN 稳定性 -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -39,7 +48,7 @@
 <body class="bg-neutral-50 text-slate-900">
     <div id="root"></div>
 
-    <script type="text/babel">
+    <script type="text/babel" data-presets="react-classic">
         const { useState, useEffect, useMemo } = React;
 
         /**
